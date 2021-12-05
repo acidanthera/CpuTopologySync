@@ -1,5 +1,5 @@
 # CpuTopologySync
-[![Build Status](https://github.com/acidanthera/CpuTopologySync/workflows/CI/badge.svg?branch=master)](https://github.com/acidanthera/CpuTopologySync/actions) [![Scan Status](https://scan.coverity.com/projects/XXXX/badge.svg?flat=1)](https://scan.coverity.com/projects/XXXX)
+[![Build Status](https://github.com/acidanthera/CpuTopologySync/workflows/CI/badge.svg?branch=master)](https://github.com/acidanthera/CpuTopologySync/actions) [![Scan Status](https://scan.coverity.com/projects/24192/badge.svg?flat=1)](https://scan.coverity.com/projects/24192)
 
 Activate efficient cores in Alder Lake CPUs on macOS. The kext additionally requires a kernel patch:
 

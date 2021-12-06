@@ -72,14 +72,14 @@ extern "C" kern_return_t ml_processor_register(cpu_id_t cpu_id, uint32_t lapic_i
 
 static uintptr_t org_ml_processor_register;
 kern_return_t my_ml_processor_register(cpu_id_t cpu_id, uint32_t lapic_id, processor_t *processor_out, boolean_t boot_cpu, boolean_t start) {
-    DBGLOG("cts", "registering their %u boot %d - curr n %u\n", lapic_id, start, real_ncpus);
+    DBGLOG("cts", "registering their %u boot %d - curr n %u", lapic_id, start, real_ncpus);
     auto kret = FunctionCast(my_ml_processor_register, org_ml_processor_register)(cpu_id, lapic_id, processor_out, boot_cpu, start);
     if (real_ncpus > efficientCoreStart && kret == KERN_SUCCESS && start == FALSE) {
-        DBGLOG("cts", "registering %u - curr n %u\n", lapic_id + 1, real_ncpus);
+        DBGLOG("cts", "registering %u - curr n %u", lapic_id + 1, real_ncpus);
         processor_t proc;
         PANIC_COND(efficientCoreRegisterd >= arrsize(cpuIds), "cts", "too many efficientCoreRegisterd");
         auto kr = FunctionCast(my_ml_processor_register, org_ml_processor_register)(&cpuIds[efficientCoreRegisterd], lapic_id + 1, &proc, false, false);
-        PANIC_COND(kr != KERN_SUCCESS, "cts", "failed to ml_processor_register %u - %d\n", lapic_id + 1, kr);
+        PANIC_COND(kr != KERN_SUCCESS, "cts", "failed to ml_processor_register %u - %d", lapic_id + 1, kr);
         efficientCoreRegisterd++;
     }
 

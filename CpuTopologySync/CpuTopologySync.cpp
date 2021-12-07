@@ -57,12 +57,24 @@ OSDefineMetaClassAndStructors(CpuTopologySync, IOService)
     20 threads but 16 registered from MADT (after thread_count patch -> 20)
   To workaround this the code below registers a disabled hyper thread for each efficient CPU.
   We use the fact efficient CPUs are added to the end of MADT by Intel.
+
+  After this only half of the efficient cores will be active.
+  The reason for this is the way XNU interrupt controller works.
+  cpu_topology_start_cpu will not start any CPU, which index is
+  outside machine_info.max_cpus, and max_cpus is equal to a total
+  number of _active_ CPUs.
+  * Trying to increase this value results in a stall, likely because
+    non-existent ("hyperthreaded" counterprarts of E-Cores) CPUs
+    do not come live.
+  * Trying to add non-existent CPUs after all E-Cores does not work
+    either as they are treated as physical cores on the die,
+    and thus result in the same asymmetric topology crash.
 */
 
 bool ADDPR(debugEnabled) = true;
 uint32_t ADDPR(debugPrintDelay) = 0;
 
-static cpu_id_t cpuIds[128];
+static uint32_t cpuIds[128];
 static uint32_t efficientCoreCount;
 static uint32_t efficientCoreStart;
 static uint32_t efficientCoreRegisterd;
@@ -72,15 +84,22 @@ extern "C" kern_return_t ml_processor_register(cpu_id_t cpu_id, uint32_t lapic_i
 
 static uintptr_t org_ml_processor_register;
 kern_return_t my_ml_processor_register(cpu_id_t cpu_id, uint32_t lapic_id, processor_t *processor_out, boolean_t boot_cpu, boolean_t start) {
-    DBGLOG("cts", "registering their %u boot %d - curr n %u", lapic_id, start, real_ncpus);
     auto kret = FunctionCast(my_ml_processor_register, org_ml_processor_register)(cpu_id, lapic_id, processor_out, boot_cpu, start);
+    DBGLOG("cts", "registered their %u boot %d - curr n %u (%d)", lapic_id, start, real_ncpus, kret);
     if (real_ncpus > efficientCoreStart && kret == KERN_SUCCESS && start == FALSE) {
-        DBGLOG("cts", "registering %u - curr n %u", lapic_id + 1, real_ncpus);
-        processor_t proc;
+        DBGLOG("cts", "saving %u - curr n %u", lapic_id + 1, real_ncpus);
         PANIC_COND(efficientCoreRegisterd >= arrsize(cpuIds), "cts", "too many efficientCoreRegisterd");
-        auto kr = FunctionCast(my_ml_processor_register, org_ml_processor_register)(&cpuIds[efficientCoreRegisterd], lapic_id + 1, &proc, false, false);
-        PANIC_COND(kr != KERN_SUCCESS, "cts", "failed to ml_processor_register %u - %d", lapic_id + 1, kr);
+        cpuIds[efficientCoreRegisterd] = lapic_id + 1;
         efficientCoreRegisterd++;
+        
+        if (efficientCoreRegisterd == efficientCoreCount) {
+            for (uint32_t i = 0; i < efficientCoreCount; i++) {
+                DBGLOG("cts", "registering %u - curr n %u", cpuIds[i], real_ncpus);
+                processor_t proc;
+                auto kr = FunctionCast(my_ml_processor_register, org_ml_processor_register)(&cpuIds[i], cpuIds[i], &proc, false, false);
+                PANIC_COND(kr != KERN_SUCCESS, "cts", "failed to ml_processor_register %u - %d", cpuIds[i], kr);
+            }
+        }
     }
 
     return kret;

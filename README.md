@@ -1,4 +1,4 @@
 CpuTopologySync
 ===============
 
-CpuTopologySync causes multiple certain stability issues with different applications and does not allow using half of the E-Cores on Intel Alder Lake CPUs.
+CpuTopologySync is now a quirk of [OpenCore](https://github.com/acidanthera/OpenCorePkg) starting from version 0.7.7. Please use `ProvideCurrentCpuInfo` from OpenCore instead.
